@@ -177,3 +177,30 @@ more info for web server's:
 - [Apache Authentication How-To](https://httpd.apache.org/docs/2.4/howto/auth.html)
 - [NGINX (Restricting Access)](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
 
+## Custom authentication
+override `.authenticate(self, request)` by `BaseAuthentication`
+- return `(user, auth)` for authenticated user
+- return `None` for check other authentication classes
+- return `AuthenticationFailed` for rase an error
+
+you can also override `.authenticate_header()` for return `HTTP 401 Unauthorized` in response.
+
+**Example**: The following example will authenticate any incoming request as the user given by the username in a custom request header named `'X-USERNAME'`.
+``` python
+from django.contrib.auth.models import User
+from rest_framework import authentication
+from rest_framework import exceptions
+
+class ExampleAuthentication(authentication.BaseAuthentication):
+    def authenticate(self, request):
+        username = request.META.get('HTTP_X_USERNAME')
+        if not username:
+            return None
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise exceptions.AuthenticationFailed('No such user')
+
+        return (user, None)
+```
