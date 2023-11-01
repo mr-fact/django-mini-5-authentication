@@ -66,7 +66,7 @@ def example_view(request, format=None):
 ### Unauthorized and Forbidden responses
 `HTTP 401 Unauthorized` responses must always include a WWW-Authenticate header, that instructs the client how to authenticate.
 
-`HTTP 403 Unauthorized` responses do not include the WWW-Authenticate header.
+`HTTP 403 Permission Denied` responses do not include the WWW-Authenticate header.
 
 The first authentication class set on the view is used when determining the type of response.
 
@@ -76,3 +76,104 @@ Note that when a request may successfully authenticate, but still be denied perm
 [...](https://www.django-rest-framework.org/api-guide/authentication/#apache-mod_wsgi-specific-configuration)
 
 ## API Reference
+### BasicAuthentication
+`request.user` = `User`
+
+`request.auth` = `None`
+
+[HTTP Basic Authentication](https://tools.ietf.org/html/rfc2617), signed against a user's username and password (only for testing)
+
+Note: If you use `BasicAuthentication` in production you must ensure that your API is only available over `https`. You should also ensure that your API clients will always re-request the username and password at login, and **will never store those details to persistent storage**.
+
+### TokenAuthentication
+`request.user` = `User`
+
+`request.auth` = `rest_framework.authtoken.models.Token`
+
+``` python
+INSTALLED_APPS = [
+    ...
+    'rest_framework.authtoken'
+]
+# python3 manage.py migrate
+```
+- If you want to use a different keyword in the header, such as `Bearer`, simply subclass `TokenAuthentication` and set the `keyword` class variable.
+
+request header:
+- `Authorization`: 'Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b'
+
+### Generating Tokens
+**By using signals** for example `post_save`
+``` python
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
+```
+``` python
+from rest_framework.authtoken import views
+urlpatterns += [
+    path('api-token-auth/', views.obtain_auth_token)
+]
+```
+Custom View
+``` python
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+
+class CustomAuthToken(ObtainAuthToken):
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'email': user.email
+        })
+```
+**admin** in `your_app/admin.py`:
+``` python
+from rest_framework.authtoken.admin import TokenAdmin
+
+TokenAdmin.raw_id_fields = ['user']
+```
+**command** in `command line`:
+
+get token -> `./manage.py drf_create_token <username>`
+
+regenerate token -> `./manage.py drf_create_token -r <username>`
+
+### SessionAuthentication
+`request.user` = `User`
+
+`request.auth` = `None`
+
+Session authentication is appropriate for `AJAX` clients that are running in the same session context as your website.
+
+If you're using an `AJAX-style` API with SessionAuthentication, you'll need to make sure you include a valid [CSRF](https://docs.djangoproject.com/en/stable/ref/csrf/#ajax) token for any `"unsafe" HTTP method` calls, such as `PUT`, `PATCH`, `POST` or `DELETE` requests.
+
+this only authenticated requests require `CSRF` tokens, and `anonymous requests` may be sent `without CSRF` tokens.
+
+### RemoteUserAuthentication
+`request.user` = `User`
+
+`request.auth` = `None`
+
+This authentication scheme allows you to delegate authentication to your web server, which sets the `REMOTE_USER` environment variable.
+
+By default, `RemoteUserBackend` creates User objects for usernames that don't already exist. To change this and other behaviour, consult the [Django documentation](https://docs.djangoproject.com/en/stable/howto/auth-remote-user/).
+
+more info for web server's:
+- [Apache Authentication How-To](https://httpd.apache.org/docs/2.4/howto/auth.html)
+- [NGINX (Restricting Access)](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
+
