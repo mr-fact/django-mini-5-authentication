@@ -204,3 +204,17 @@ class ExampleAuthentication(authentication.BaseAuthentication):
 
         return (user, None)
 ```
+
+## Third party packages
+- [django-rest-knox](https://github.com/James1345/django-rest-knox)
+- [django oauth toolkit](https://github.com/evonove/django-oauth-toolkit)
+- [django rest framework oauth](https://jpadilla.github.io/django-rest-framework-oauth/)
+- [simple jwt](https://github.com/davesque/django-rest-framework-simplejwt)
+- [hawk](https://hawkrest.readthedocs.io/en/latest/)
+- [HTTP Signature](https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html)
+- [Djoser](https://github.com/sunscrapers/djoser)
+- [Dj-rest-auth](https://github.com/jazzband/dj-rest-auth)
+- [Drf-social-oauth2](https://github.com/wagnerdelima/drf-social-oauth2)
+- [drfpasswordless](https://github.com/aaronn/django-rest-framework-passwordless)
+- [django-rest-authemail](https://github.com/celiao/django-rest-authemail)
+- [django-rest-during](https://github.com/eshaan7/django-rest-durin)
